@@ -6,7 +6,7 @@
 1. 在你的handler.js中，请求目标url修改为为你部署此服务端的地址（e.g ip+端口+路径)  
 2.安装本项目依赖并运行  
 ```bash
-pnpm i && node .
+pnpm i --registry=https://registry.npmmirror.com && node .
 ```
 3.handler[参考构建](https://github.com/XuF163/ZZZ-Enka-MYS-Server/blob/master/%E6%94%BEexample%E4%B8%8B%E9%9D%A2.js)  
 ```  

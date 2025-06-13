@@ -3,10 +3,9 @@ import http from 'http';
 import url from 'url';
 import _ from 'lodash';
 import DataGenerator from "./DataGenerator.js"; // 确认路径 './DataGenerator.js' 正确
-
 const PORT = 63636; // 保持端口一致
-const logger = console; // 使用 console 作为 logger，你可以替换成你项目使用的 logger
 const generator = new DataGenerator(); // 实例化 DataGenerator
+import {logger} from './lib/log.js'
 
 // --- Helper: 从请求体或URL中提取 UID ---
 function extractUidFromRequest(requestData) {
@@ -15,6 +14,7 @@ function extractUidFromRequest(requestData) {
             const queryParams = new URLSearchParams(requestData.apiUrl.query);
             const roleIdQuery = queryParams.get('role_id'); // Enka API 请求中的 role_id 通常是 UID
             if (roleIdQuery && /^\d+$/.test(roleIdQuery)) {
+                logger.mark(`[Mock Server] 正在为${roleIdQuery} 使用Enka更新面板数据`)
                 logger.debug(`[Server] Extracted UID from apiUrl.query.role_id: ${roleIdQuery}`);
                 return roleIdQuery;
             }
@@ -207,6 +207,7 @@ const server = http.createServer(async (req, res) => { // 标记为 async
                  res.writeHead(statusCode, { 'Content-Type': 'application/json' });
                  res.end(JSON.stringify(responseToSend));
                  logger.info(`${logPrefix} Sent response with status ${statusCode}.`);
+                 logger.mark(`${logPrefix} ${uid} 的面板数据更新完成`)
             }
 
         });
@@ -225,8 +226,8 @@ const server = http.createServer(async (req, res) => { // 标记为 async
 
 // --- 启动服务器 ---
 server.listen(PORT, () => {
-    logger.info(`[Mock Server] Running at http://localhost:${PORT}`);
-    logger.info('[Mock Server] Ready to provide dynamically generated game data via POST /getData');
+    logger.mark(`[Mock Server] Running at http://localhost:${PORT}`);
+    logger.mark('[Mock Server] Ready to provide dynamically generated game data via POST /getData');
 });
 
 server.on('error', (err) => {

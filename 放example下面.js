@@ -13,7 +13,7 @@ export class Handler extends plugin {
     super({
       name: '小新枝',
       namespace: '小新枝API',
-      priority: Infinity,
+      priority: 100,
       handler: [{
         key: 'mys.req.err',
         fn: 'mysReqErrHandler'
@@ -41,7 +41,7 @@ export class Handler extends plugin {
         apiUrl
       }
       //测试服务器，随时关，自部署的话换成自己的
-      let res = await fetch(`http://190.92.238.195:63636/getData`, {
+      let res = await fetch(`http://127.0.0.1:63636/getData`, {
         method: 'post',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(data)
