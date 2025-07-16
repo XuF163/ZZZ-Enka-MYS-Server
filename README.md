@@ -35,19 +35,22 @@ async mysReqErrHandler(e, args, reject) {
 ### 使用说明  
 4.19 已经实现较为准确的圣遗物/角色属性转换能力，仅测试过有CK且未**绑定设备**时候的 **%更新面板**以及具体角色面板查询能力.  
 
-### 潜在问题与免责声明  
-1.使用此服务端后ZZZ插件处仍然需要扫码登录，本handler服务端仅在Mys报错后生效，请确保多个handler存在时**最后**调用本服务端.  
-2.如果你有多个handler ,则不能保证你的handler不与其它handler冲突，介意请慎用，或自行做出修改.  
-3.本服务端需要传入用户CK，请自行搭建并避免使用所谓的**公共**/**公益**服务端.  
-4.本仓库仅供测试用途，将于插件本体实现Enka面板更新能力后archive，亦不会随绝区零新版本更新任何json文件.  
+### 潜在问题、免责声明与权利声明  
+1.推荐使用ZZZ-Plugin内置enka源, 本仓库仅供测试用途, 亦不承诺随绝区零新版本更新任何json文件.    
+2.使用此服务端后ZZZ插件处仍然需要扫码登录，本handler服务端仅在Mys报错后生效，请确保多个handler存在时**最后**调用本服务端.  
+3.如果你有多个handler ,则不能保证你的handler**不与其它handler冲突**，介意请慎用，或自行做出修改.  
+4.本服务端需要传入用户CK，请自行搭建并避免使用所谓的**公共**/**公益**服务端.  
+5.开源协议跟随上游项目，本库无其余权利主张  
 
 ### 致谢  
-1.[ZZZuid](https://github.com/ZZZure/ZZZeroUID)  
-2.[Enka.network](Enka.network)  
-3.[ZZZ-plugin](https://github.com/ZZZure/ZZZ-Plugin)  
+1.[ZZZuid](https://github.com/ZZZure/ZZZeroUID)  本仓库cv了其解析数据源json  
+2.[Enka.network](Enka.network)  本仓库使用其数据源  
+3.[ZZZ-plugin](https://github.com/ZZZure/ZZZ-Plugin)  本仓库cv了其数据格式
 
 ### 效果展示  
 <a id="section1"></a>  
 上面是本项目返回的，下面是Enka官网查询的
 ![41bb8d4d94d2f2a6e98f7797759fb777](https://github.com/user-attachments/assets/c4a1f06b-1052-470f-b183-517e5caabe96)
-![57903b5bb02398ad0e0b3f9279b9c637](https://github.com/user-attachments/assets/8f740766-74aa-427d-86d1-7eddef605447)
+![57903b5bb02398ad0e0b3f9279b9c637](https://github.com/user-attachments/assets/8f740766-74aa-427d-86d1-7eddef605447)  
+
+
