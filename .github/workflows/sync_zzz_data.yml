@@ -1,0 +1,152 @@
+# .github/workflows/sync_zzz_data.yml
+
+name: Sync Data from ZZZure/ZZZeroUID
+
+on:
+  # 每小时的第0分钟自动运行一次
+  schedule:
+    - cron: '0 * * * *'
+  # 允许您从 Actions 标签页手动触发此工作流
+  workflow_dispatch:
+
+jobs:
+  sync-if-updated:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 步骤 1: 检出您自己的仓库，以读取和写入 commit hash 记录文件
+      - name: Checkout destination repo
+        uses: actions/checkout@v4
+        with:
+          ref: 'master'
+          token: ${{ secrets.CROSS_REPO_PAT }}
+
+      # 步骤 2: 获取上游仓库最新的 Commit Hash
+      # 使用 git ls-remote 命令，它非常轻量，无需克隆整个仓库
+      - name: Get latest upstream commit hash
+        id: get_upstream_hash
+        run: |
+          LATEST_HASH=$(git ls-remote https://github.com/ZZZure/ZZZeroUID.git master | awk '{print $1}')
+          echo "Latest upstream commit hash: $LATEST_HASH"
+          echo "hash=$LATEST_HASH" >> $GITHUB_OUTPUT
+
+      # 步骤 3: 比对新旧 Hash，判断是否需要更新
+      - name: Check for updates by comparing hashes
+        id: check_for_updates
+        run: |
+          # 定义用于存储上一次同步 hash 的文件名
+          HASH_FILE=".last_synced_hash"
+          
+          # 读取本地存储的旧 hash
+          if [ -f "$HASH_FILE" ]; then
+            STORED_HASH=$(cat "$HASH_FILE")
+          else
+            STORED_HASH=""
+          fi
+          echo "Stored hash from last sync: $STORED_HASH"
+
+          LATEST_HASH="${{ steps.get_upstream_hash.outputs.hash }}"
+          
+          # 比对 hash
+          if [ "$STORED_HASH" == "$LATEST_HASH" ]; then
+            echo "Upstream repository has no new commits. No action needed."
+            echo "needs_sync=false" >> $GITHUB_OUTPUT
+          else
+            echo "New commits detected in upstream repository. Proceeding with sync."
+            echo "needs_sync=true" >> $GITHUB_OUTPUT
+          fi
+
+      # 步骤 4: 动态发现、下载、重命名并放置文件
+      # 关键：此步骤只有在 needs_sync=true 时才会运行
+      - name: Discover, Download, Rename, and Place Files
+        if: steps.check_for_updates.outputs.needs_sync == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.CROSS_REPO_PAT }}
+        run: |
+          # --- 配置区 ---
+          SOURCE_REPO="ZZZure/ZZZeroUID"
+          SOURCE_BRANCH="master" 
+          DEST_DIR="resources/enka"
+          API_URL="https://api.github.com/repos/$SOURCE_REPO/contents"
+          # --- 配置区结束 ---
+
+          echo "准备将文件同步到 $DEST_DIR 目录..."
+          mkdir -p $DEST_DIR
+
+          # 1. 处理没有版本号的静态文件
+          echo "--- 处理静态文件 ---"
+          static_files=(
+            "utils/alias/char_alias.json"
+            "utils/map/PartnerScore.json"
+          )
+          for file_path in "${static_files[@]}"; do
+            filename=$(basename "$file_path")
+            echo "处理: $filename"
+            source_url="https://raw.githubusercontent.com/$SOURCE_REPO/$SOURCE_BRANCH/$file_path"
+            dest_file="$DEST_DIR/$filename"
+            curl -s -L -f -o "$dest_file" "$source_url"
+          done
+
+          # 2. 处理带有动态版本号的文件
+          echo "--- 处理动态版本号文件 ---"
+          echo "正在从 API 获取 $SOURCE_REPO/utils/map 的文件列表..."
+          # 使用 jq 工具解析 API 返回的 JSON，并提取所有文件名
+          map_files_json=$(curl -s -f -L -H "Authorization: Bearer $GH_TOKEN" "$API_URL/utils/map?ref=$SOURCE_BRANCH")
+          
+          # 检查 API 调用是否成功
+          if ! echo "$map_files_json" | jq -e . > /dev/null 2>&1; then
+            echo "::error::无法从 GitHub API 获取文件列表或返回格式错误。"
+            echo "API 响应: $map_files_json"
+            exit 1
+          fi
+
+          # 定义我们感兴趣的文件前缀
+          dynamic_file_prefixes=(
+            "EquipId2Data"
+            "PartnerId2Data"
+            "PartnerId2SkillParam"
+            "WeaponId2Data"
+          )
+
+          # 循环处理每一个文件前缀
+          for prefix in "${dynamic_file_prefixes[@]}"; do
+            # 从 API 返回的完整文件列表中，查找以当前前缀开头、.json 结尾的文件
+            full_filename=$(echo "$map_files_json" | jq -r ".[] | select(.name | startswith(\"$prefix\") and endswith(\".json\")) | .name" | head -n 1)
+
+            if [[ -n "$full_filename" ]]; then
+              # 如果找到了匹配的文件
+              echo "发现动态文件: $full_filename"
+              file_path="utils/map/$full_filename"
+              # 新文件名就是前缀加上 .json
+              new_filename="$prefix.json"
+              source_url="https://raw.githubusercontent.com/$SOURCE_REPO/$SOURCE_BRANCH/$file_path"
+              dest_file="$DEST_DIR/$new_filename"
+              
+              echo "  -> 重命名为: $new_filename"
+              echo "  -> 保存至: $dest_file"
+              curl -s -L -f -o "$dest_file" "$source_url"
+            else
+              # 如果在 API 返回的列表中找不到任何匹配的文件
+              echo "::warning:: 未在源仓库中找到任何以 '$prefix' 开头的文件。"
+            fi
+          done
+
+          echo "所有文件处理完毕。"
+
+      # 步骤 5: 更新本地的 hash 记录文件
+      # 关键：此步骤也只在需要同步时运行
+      - name: Update stored hash file
+        if: steps.check_for_updates.outputs.needs_sync == 'true'
+        run: echo "${{ steps.get_upstream_hash.outputs.hash }}" > .last_synced_hash
+
+      # 步骤 6: 自动提交并推送更改
+      # 关键：此步骤也只在需要同步时运行
+      # git-auto-commit 会自动把更新的数据文件和 .last_synced_hash 文件一起提交
+      - name: Commit and push changes
+        if: steps.check_for_updates.outputs.needs_sync == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(data): 自动同步 ZZZure/ZZZeroUID 数据文件"
+          branch: master
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com
